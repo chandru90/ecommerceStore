@@ -31,6 +31,56 @@ router.post("/checkout", async (req, res) => {
 });
 
 
+
+router.get("/orders/stats", async (req, res) => {
+  try {
+    const stats = await Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$totalAmount" },
+          uniqueUsers: { $addToSet: "$email" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalRevenue: 1,
+          userCount: { $size: "$uniqueUsers" },
+        },
+      },
+    ]);
+
+    res.json(
+      stats[0] || { totalRevenue: 0, userCount: 0 }
+    );
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 router.get("/orders/:email", async (req, res) => {
   const { email } = req.params;
   console.log(email);
