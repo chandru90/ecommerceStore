@@ -63,6 +63,59 @@ router.get("/orders/stats", async (req, res) => {
 
 
 
+// router.get("/orders/user-stats", async (req, res) => {
+//   try {
+//     const userOrders = await Order.aggregate([
+//       {
+//         $group: {
+//           _id: "$email",
+
+//           // total orders by user
+//           totalOrders: { $sum: 1 },
+
+//           // total spent by user
+//           totalSpent: { $sum: "$totalAmount" },
+
+//           // all orders
+//           orders: {
+//             $push: {
+//               orderId: "$_id",
+//               totalAmount: "$totalAmount",
+//               products: "$products",
+//               createdAt: "$createdAt",
+//             },
+//           },
+//         },
+//       },
+
+//       {
+//         $project: {
+//           _id: 0,
+//           email: "$_id",
+//           totalOrders: 1,
+//           totalSpent: 1,
+//           orders: 1,
+//         },
+//       },
+
+//       // highest spender first
+//       {
+//         $sort: { totalSpent: -1 },
+//       },
+//     ]);
+
+//     res.json(userOrders);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
+
+
+
+
+// routes/orderRoutes.js
+
 router.get("/orders/user-stats", async (req, res) => {
   try {
     const userOrders = await Order.aggregate([
@@ -73,7 +126,7 @@ router.get("/orders/user-stats", async (req, res) => {
           // total orders by user
           totalOrders: { $sum: 1 },
 
-          // total spent by user
+          // total amount spent
           totalSpent: { $sum: "$totalAmount" },
 
           // all orders
@@ -81,7 +134,34 @@ router.get("/orders/user-stats", async (req, res) => {
             $push: {
               orderId: "$_id",
               totalAmount: "$totalAmount",
-              products: "$products",
+
+              // products array
+              products: {
+                $map: {
+                  input: "$products",
+                  as: "p",
+                  in: {
+                    name: {
+                      $ifNull: [
+                        "$$p.name",
+                        {
+                          $ifNull: [
+                            "$$p.title",
+                            {
+                              $ifNull: [
+                                "$$p.productName",
+                                "Unknown Product",
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    quantity: "$$p.quantity",
+                  },
+                },
+              },
+
               createdAt: "$createdAt",
             },
           },
@@ -98,7 +178,6 @@ router.get("/orders/user-stats", async (req, res) => {
         },
       },
 
-      // highest spender first
       {
         $sort: { totalSpent: -1 },
       },
@@ -107,14 +186,11 @@ router.get("/orders/user-stats", async (req, res) => {
     res.json(userOrders);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      message: "Server error",
+    });
   }
 });
-
-
-
-
-
 
 
 
